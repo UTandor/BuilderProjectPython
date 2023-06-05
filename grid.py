@@ -23,6 +23,7 @@ class Rectangle:
         self.is_dragging = False
         self.offset_x = 0
         self.offset_y = 0
+        self.marked_for_deletion = False
 
     def render(self):
         pygame.draw.rect(screen, self.rect_color, (self.x_position, self.y_position, self.scale, self.scale))
@@ -43,7 +44,7 @@ class Rectangle:
             mouse_pos = pygame.mouse.get_pos()
             rectangle_rect = pygame.Rect(self.x_position, self.y_position, self.scale, self.scale)
             if rectangle_rect.collidepoint(mouse_pos):
-                if not self.is_dragging:  
+                if not self.is_dragging:
                     self.x_position = mouse_pos[0] - self.scale // 2
                     self.y_position = mouse_pos[1] - self.scale // 2
                 self.is_dragging = True
@@ -53,7 +54,7 @@ class Rectangle:
         elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             if self.is_dragging:
                 self.is_dragging = False
-                if self.rect_color == CLICK_COLOR:  
+                if self.rect_color == CLICK_COLOR:
                     k = 50
                     self.x_position = round(self.x_position / k) * k
                     self.y_position = round(self.y_position / k) * k
@@ -62,6 +63,11 @@ class Rectangle:
                 mouse_pos = pygame.mouse.get_pos()
                 self.x_position = mouse_pos[0] + self.offset_x
                 self.y_position = mouse_pos[1] + self.offset_y
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
+            mouse_pos = pygame.mouse.get_pos()
+            rectangle_rect = pygame.Rect(self.x_position, self.y_position, self.scale, self.scale)
+            if rectangle_rect.collidepoint(mouse_pos):
+                self.marked_for_deletion = True
 
 class UIElement:
     def __init__(self, x_position, y_position, width, height, background_color, outline_color):
@@ -110,6 +116,13 @@ while running:
             running = False
         rectangle.handle_event(event)
         ui_element.handle_event(event)
+
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
+            for rect in rectangles:
+                rect.handle_event(event)
+
+    # Remove the marked rectangles
+    rectangles = [rect for rect in rectangles if not rect.marked_for_deletion]
 
     screen.fill(WHITE)
 
