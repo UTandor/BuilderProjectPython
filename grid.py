@@ -9,8 +9,8 @@ pygame.display.set_caption("Testing..........")
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
 WHITE = (255, 255, 255)
-HOVER_COLOR = (0, 255, 0)  
-CLICK_COLOR = (0, 0, 255)  
+HOVER_COLOR = (0, 255, 0)  # Example color for hover
+CLICK_COLOR = (0, 0, 255)  # Blue color for clicked state
 
 class Rectangle():
     def __init__(self, scale, x_position, y_position, rect_color):
@@ -53,31 +53,34 @@ class Rectangle():
                 self.x_position = mouse_pos[0] + self.offset_x
                 self.y_position = mouse_pos[1] + self.offset_y
 
-                if self.x_position < 0:
-                    self.x_position = 0
-                if self.x_position + self.scale > window_size[0]:
-                    self.x_position = window_size[0] - self.scale
-                if self.y_position < 0:
-                    self.y_position = 0
-                if self.y_position + self.scale > window_size[1]:
-                    self.y_position = window_size[1] - self.scale
+                # Snap the rectangle to the grid
+                k = 50  # Size of each grid square
+                self.x_position = round(self.x_position / k) * k
+                self.y_position = round(self.y_position / k) * k
 
-rectangle_width = 100
-rectangle_height = 100
-x_position = (window_size[0] - rectangle_width) // 2  
-y_position = (window_size[1] - rectangle_height) // 2  
-rectangle = Rectangle(rectangle_width, x_position, y_position, BLACK)
+# Create an instance of the Rectangle class
+k = 50  # Size of each grid square
+x_position = ((window_size[0] // k) // 2) * k  # Calculate x-coordinate for middle tile
+y_position = ((window_size[1] // k) // 2) * k  # Calculate y-coordinate for middle tile
+rectangle = Rectangle(k, x_position, y_position, BLACK)
 
 running = True
 while running:
     screen.fill(WHITE)
+
+    # Draw the grid
+    for x in range(0, window_size[0], k):
+        pygame.draw.line(screen, (0, 0, 0, 100), (x, 0), (x, window_size[1]), 1)
+    for y in range(0, window_size[1], k):
+        pygame.draw.line(screen, (0, 0, 0, 100), (0, y), (window_size[0], y), 1)
+
     rectangle.render()
     rectangle.check_hover()
 
     font = pygame.font.Font(None, 36)
     text = font.render("You should be able to drag", True, BLACK)
-    text_x = 10  
-    y_position = 10  
+    text_x = 10  # X-coordinate for top-left corner
+    y_position = 10  # Y-coordinate for top-left corner
 
     screen.blit(text, (text_x, y_position))
 
