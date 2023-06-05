@@ -9,8 +9,8 @@ pygame.display.set_caption("Testing..........")
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
 WHITE = (255, 255, 255)
-HOVER_COLOR = (0, 255, 0)  # Example color for hover
-CLICK_COLOR = (0, 0, 255)  # Blue color for clicked state
+HOVER_COLOR = (0, 255, 0)  
+CLICK_COLOR = (0, 0, 255)  
 
 class Rectangle():
     def __init__(self, scale, x_position, y_position, rect_color):
@@ -53,11 +53,19 @@ class Rectangle():
                 self.x_position = mouse_pos[0] + self.offset_x
                 self.y_position = mouse_pos[1] + self.offset_y
 
-# Create an instance of the Rectangle class
+                if self.x_position < 0:
+                    self.x_position = 0
+                if self.x_position + self.scale > window_size[0]:
+                    self.x_position = window_size[0] - self.scale
+                if self.y_position < 0:
+                    self.y_position = 0
+                if self.y_position + self.scale > window_size[1]:
+                    self.y_position = window_size[1] - self.scale
+
 rectangle_width = 100
 rectangle_height = 100
-x_position = (window_size[0] - rectangle_width) // 2  # Calculate x-coordinate for middle
-y_position = (window_size[1] - rectangle_height) // 2  # Calculate y-coordinate for middle
+x_position = (window_size[0] - rectangle_width) // 2  
+y_position = (window_size[1] - rectangle_height) // 2  
 rectangle = Rectangle(rectangle_width, x_position, y_position, BLACK)
 
 running = True
@@ -68,8 +76,8 @@ while running:
 
     font = pygame.font.Font(None, 36)
     text = font.render("You should be able to drag", True, BLACK)
-    text_x = 10  # X-coordinate for top-left corner
-    y_position = 10  # Y-coordinate for top-left corner
+    text_x = 10  
+    y_position = 10  
 
     screen.blit(text, (text_x, y_position))
 
