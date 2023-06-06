@@ -13,11 +13,12 @@ clock = pygame.time.Clock()
 rectangles = []
 
 ui_buttons = [
-    {"rect": pygame.Rect(screen_width // 2 - 125, screen_height - 60, 50, 50), "color": (0, 0, 255)},  
-    {"rect": pygame.Rect(screen_width // 2 - 65, screen_height - 60, 50, 50), "color": (255, 255, 0)},  
-    {"rect": pygame.Rect(screen_width // 2 - 5, screen_height - 60, 50, 50), "color": (255, 165, 0)},  
-    {"rect": pygame.Rect(screen_width // 2 + 55, screen_height - 60, 50, 50), "color": (0, 255, 0)},  
-    {"rect": pygame.Rect(screen_width // 2 + 115, screen_height - 60, 50, 50), "color": (128, 0, 128)}  
+    {"rect": pygame.Rect(screen_width // 2 - 185, screen_height - 60, 50, 50), "color": (255, 0, 0)},
+    {"rect": pygame.Rect(screen_width // 2 - 125, screen_height - 60, 50, 50), "color": (0, 0, 255)},
+    {"rect": pygame.Rect(screen_width // 2 - 65, screen_height - 60, 50, 50), "color": (255, 255, 0)},
+    {"rect": pygame.Rect(screen_width // 2 - 5, screen_height - 60, 50, 50), "color": (255, 165, 0)},
+    {"rect": pygame.Rect(screen_width // 2 + 55, screen_height - 60, 50, 50), "color": (0, 255, 0)},
+    {"rect": pygame.Rect(screen_width // 2 + 115, screen_height - 60, 50, 50), "color": (128, 0, 128)}
 ]
 
 ui_selected_button = None
@@ -57,31 +58,30 @@ while running:
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 1:  
+            if event.button == 1:
                 for i, button in enumerate(ui_buttons):
                     if button["rect"].collidepoint(event.pos):
                         ui_selected_button = i
                         break
                 else:
                     if ui_selected_button is not None:
-
                         mouse_pos = snap_to_grid(event.pos)
                         rect_width = GRID_SIZE
                         rect_height = GRID_SIZE
                         rect = pygame.Rect(mouse_pos[0], mouse_pos[1], rect_width, rect_height)
                         rect_color = ui_buttons[ui_selected_button]["color"]
                         rectangles.append((rect, rect_color))
-            elif event.button == 3:  
+            elif event.button == 3:
                 for rect, _ in rectangles:
                     if rect.collidepoint(event.pos):
                         rectangles.remove((rect, _))
                         break
-            elif event.button == 4:  
+            elif event.button == 4:
                 if ui_selected_button is not None:
                     ui_selected_button -= 1
                     if ui_selected_button < 0:
                         ui_selected_button = len(ui_buttons) - 1
-            elif event.button == 5:  
+            elif event.button == 5:
                 if ui_selected_button is not None:
                     ui_selected_button += 1
                     if ui_selected_button >= len(ui_buttons):
@@ -102,16 +102,16 @@ while running:
         if ui_selected_button == i:
             pygame.draw.rect(screen, (255, 255, 255), button["rect"], 3)
 
-    if ui_selected_button is not None and ui_selected_button != 4:
+    if ui_selected_button is not None:
         mouse_pos = pygame.mouse.get_pos()
         snapped_pos = snap_to_grid(mouse_pos)
         rect_width = GRID_SIZE
         rect_height = GRID_SIZE
         preview_rect = pygame.Rect(snapped_pos[0], snapped_pos[1], rect_width, rect_height)
-        if ui_selected_button != 5:
+        if ui_selected_button != 4 and ui_selected_button != 5:
             preview_color = get_darker_color(ui_buttons[ui_selected_button]["color"])
         else:
-            preview_color = (100, 100, 100)  
+            preview_color = ui_buttons[ui_selected_button]["color"]
         pygame.draw.rect(screen, preview_color, preview_rect)
 
     pygame.display.flip()
