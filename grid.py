@@ -96,9 +96,20 @@ while running:
             mouse_pos = pygame.mouse.get_pos()
             pygame.draw.rect(screen, color, (mouse_pos[0], mouse_pos[1], 50, 30))
 
+<<<<<<< HEAD
     for x, y in deleted_cells:
         rect = pygame.Rect(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE, GRID_SIZE)
         pygame.draw.rect(screen, GRAY, rect)
+=======
+    ui_element.render()
+    ui_element.check_hover()
+
+    font = pygame.font.Font(None, 36)
+    text = font.render("Drag from corner to get square, Right Click to delete!", True, BLACK)
+    text_x = 10
+    text_y = 10
+    screen.blit(text, (text_x, text_y))
+>>>>>>> 41c022daed93afce3e3cdabb0234151f1d3eec22
 
     pygame.display.flip()
     clock.tick(60)
