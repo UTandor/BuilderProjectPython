@@ -143,7 +143,7 @@ while running:
     ui_element.check_hover()
 
     font = pygame.font.Font(None, 36)
-    text = font.render("You can drag rectangles", True, BLACK)
+    text = font.render("Drag from corner to get square, Right Click to delete!", True, BLACK)
     text_x = 10
     text_y = 10
     screen.blit(text, (text_x, text_y))
