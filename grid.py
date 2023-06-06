@@ -1,115 +1,118 @@
 import pygame
+import math
 
-WHITE = (255, 255, 255)
-GRAY = (200, 200, 200)
-RED = (255, 0, 0)
-GREEN = (0, 255, 0)
-BLUE = (0, 0, 255)
+GRID_SIZE = 50
 
 pygame.init()
 
-WIDTH = 800
-HEIGHT = 600
-GRID_SIZE = 50
-GRID_WIDTH = WIDTH // GRID_SIZE
-GRID_HEIGHT = HEIGHT // GRID_SIZE
-UI_HEIGHT = 50
-
-screen = pygame.display.set_mode((WIDTH, HEIGHT + UI_HEIGHT))
-pygame.display.set_caption("Grid Snap")
-
+screen_width = 800
+screen_height = 600
+screen = pygame.display.set_mode((screen_width, screen_height))
 clock = pygame.time.Clock()
 
-grid = [[None for _ in range(GRID_WIDTH)] for _ in range(GRID_HEIGHT)]
+rectangles = []
 
-ui_elements = [
-    (RED, pygame.Rect(10, HEIGHT + 10, 50, 30)),   
-    (GREEN, pygame.Rect(70, HEIGHT + 10, 50, 30)),   
-    (BLUE, pygame.Rect(130, HEIGHT + 10, 50, 30)),  
+ui_buttons = [
+    {"rect": pygame.Rect(screen_width // 2 - 125, screen_height - 60, 50, 50), "color": (0, 0, 255)},  
+    {"rect": pygame.Rect(screen_width // 2 - 65, screen_height - 60, 50, 50), "color": (255, 255, 0)},  
+    {"rect": pygame.Rect(screen_width // 2 - 5, screen_height - 60, 50, 50), "color": (255, 165, 0)},  
+    {"rect": pygame.Rect(screen_width // 2 + 55, screen_height - 60, 50, 50), "color": (0, 255, 0)},  
+    {"rect": pygame.Rect(screen_width // 2 + 115, screen_height - 60, 50, 50), "color": (128, 0, 128)}  
 ]
 
-dragging = False
-dragging_ui_element = None
-selected_color = None
-deleted_cells = []
+ui_selected_button = None
+preview_color = None
+
+dragging_rect = None
+dragging_offset = (0, 0)
+
+def snap_to_grid(position):
+    snapped_x = round((position[0] - GRID_SIZE / 2) / GRID_SIZE) * GRID_SIZE
+    snapped_y = round((position[1] - GRID_SIZE / 2) / GRID_SIZE) * GRID_SIZE
+    return (snapped_x, snapped_y)
+
+def get_darker_color(color):
+    r = max(color[0] - 50, 0)
+    g = max(color[1] - 50, 0)
+    b = max(color[2] - 50, 0)
+    return (r, g, b)
+
+font = pygame.font.SysFont(None, 24)
+instructions = [
+    "Left-click on a color button to select it.",
+    "Left-click on the grid to place a rectangle.",
+    "Right-click on a rectangle to delete it.",
+    "Scroll the mouse wheel to switch colors.",
+]
+text_y = screen_height - 30
+for instruction in instructions:
+    text = font.render(instruction, True, (0, 0, 0))
+    text_rect = text.get_rect(center=(screen_width // 2, text_y))
+    screen.blit(text, text_rect)
+    text_y += 30
 
 running = True
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            mouse_pos = pygame.mouse.get_pos()
-
-            if mouse_pos[1] >= HEIGHT:
-                for i, (color, ui_element) in enumerate(ui_elements):
-                    if ui_element.collidepoint(mouse_pos):
-                        dragging_ui_element = i
+            if event.button == 1:  
+                for i, button in enumerate(ui_buttons):
+                    if button["rect"].collidepoint(event.pos):
+                        ui_selected_button = i
                         break
-            else:
+                else:
+                    if ui_selected_button is not None:
 
-                grid_x = mouse_pos[0] // GRID_SIZE
-                grid_y = mouse_pos[1] // GRID_SIZE
-                if event.button == 1:  
-                    if grid[grid_y][grid_x] is not None:
+                        mouse_pos = snap_to_grid(event.pos)
+                        rect_width = GRID_SIZE
+                        rect_height = GRID_SIZE
+                        rect = pygame.Rect(mouse_pos[0], mouse_pos[1], rect_width, rect_height)
+                        rect_color = ui_buttons[ui_selected_button]["color"]
+                        rectangles.append((rect, rect_color))
+            elif event.button == 3:  
+                for rect, _ in rectangles:
+                    if rect.collidepoint(event.pos):
+                        rectangles.remove((rect, _))
+                        break
+            elif event.button == 4:  
+                if ui_selected_button is not None:
+                    ui_selected_button -= 1
+                    if ui_selected_button < 0:
+                        ui_selected_button = len(ui_buttons) - 1
+            elif event.button == 5:  
+                if ui_selected_button is not None:
+                    ui_selected_button += 1
+                    if ui_selected_button >= len(ui_buttons):
+                        ui_selected_button = 0
 
-                        dragging = True
-                        selected_color = grid[grid_y][grid_x]
-                        grid[grid_y][grid_x] = None
-                    elif selected_color is not None:
+    screen.fill((255, 255, 255))
 
-                        grid[grid_y][grid_x] = selected_color
-                elif event.button == 3:  
-                    if grid[grid_y][grid_x] is not None:
+    for x in range(0, screen_width, GRID_SIZE):
+        pygame.draw.line(screen, (200, 200, 200), (x, 0), (x, screen_height))
+    for y in range(0, screen_height, GRID_SIZE):
+        pygame.draw.line(screen, (200, 200, 200), (0, y), (screen_width, y))
 
-                        deleted_cells.append((grid_x, grid_y))
-                        grid[grid_y][grid_x] = None
+    for rect, color in rectangles:
+        pygame.draw.rect(screen, color, rect)
 
-        elif event.type == pygame.MOUSEBUTTONUP:
-            if dragging:
-                mouse_pos = pygame.mouse.get_pos()
-                grid_x = mouse_pos[0] // GRID_SIZE
-                grid_y = mouse_pos[1] // GRID_SIZE
+    for i, button in enumerate(ui_buttons):
+        pygame.draw.rect(screen, button["color"], button["rect"])
+        if ui_selected_button == i:
+            pygame.draw.rect(screen, (255, 255, 255), button["rect"], 3)
 
-                grid[grid_y][grid_x] = selected_color
-                dragging = False
-                selected_color = None
-
-    screen.fill(WHITE)
-
-    for x in range(0, WIDTH, GRID_SIZE):
-        pygame.draw.line(screen, GRAY, (x, 0), (x, HEIGHT))
-    for y in range(0, HEIGHT, GRID_SIZE):
-        pygame.draw.line(screen, GRAY, (0, y), (WIDTH, y))
-
-    for y in range(GRID_HEIGHT):
-        for x in range(GRID_WIDTH):
-            if grid[y][x] is not None:
-                color = grid[y][x]
-                rect = pygame.Rect(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE, GRID_SIZE)
-                pygame.draw.rect(screen, color, rect)
-
-    for i, (color, ui_element) in enumerate(ui_elements):
-        pygame.draw.rect(screen, color, ui_element)
-        if i == dragging_ui_element:
-            mouse_pos = pygame.mouse.get_pos()
-            pygame.draw.rect(screen, color, (mouse_pos[0], mouse_pos[1], 50, 30))
-
-<<<<<<< HEAD
-    for x, y in deleted_cells:
-        rect = pygame.Rect(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE, GRID_SIZE)
-        pygame.draw.rect(screen, GRAY, rect)
-=======
-    ui_element.render()
-    ui_element.check_hover()
-
-    font = pygame.font.Font(None, 36)
-    text = font.render("Drag from corner to get square, Right Click to delete!", True, BLACK)
-    text_x = 10
-    text_y = 10
-    screen.blit(text, (text_x, text_y))
->>>>>>> 41c022daed93afce3e3cdabb0234151f1d3eec22
+    if ui_selected_button is not None and ui_selected_button != 4:
+        mouse_pos = pygame.mouse.get_pos()
+        snapped_pos = snap_to_grid(mouse_pos)
+        rect_width = GRID_SIZE
+        rect_height = GRID_SIZE
+        preview_rect = pygame.Rect(snapped_pos[0], snapped_pos[1], rect_width, rect_height)
+        if ui_selected_button != 5:
+            preview_color = get_darker_color(ui_buttons[ui_selected_button]["color"])
+        else:
+            preview_color = (100, 100, 100)  
+        pygame.draw.rect(screen, preview_color, preview_rect)
 
     pygame.display.flip()
     clock.tick(60)
