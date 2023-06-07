@@ -1,127 +1,125 @@
 import pygame
 import math
 
-GRID_SIZE = 50
-
+# Initialize Pygame
 pygame.init()
 
-screen_width = 800
-screen_height = 600
-screen = pygame.display.set_mode((screen_width, screen_height))
-clock = pygame.time.Clock()
+# Define constants
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 600
+GRID_SIZE = 50
+ROAD_SIZE = GRID_SIZE
+BACKGROUND_COLOR = (255, 255, 255)
+GRID_COLOR = (200, 200, 200)
+ROAD_COLOR = (0, 0, 0)
+ROAD_IMAGE_PATH = "images/LineRoad.png"
+UI_COLOR = (150, 150, 150)
+UI_BORDER_COLOR = (100, 100, 100)
+UI_WIDTH = 200
+UI_HEIGHT = 50
+UI_TOGGLE_TEXT = "Toggle UI (T)"
 
-rectangles = []
+# Create the Pygame window
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+pygame.display.set_caption("Road Simulation")
 
-ui_buttons = [
-    {"rect": pygame.Rect(screen_width // 2 - 185, screen_height - 60, 50, 50), "color": (255, 0, 0)},
-    {"rect": pygame.Rect(screen_width // 2 - 125, screen_height - 60, 50, 50), "color": (0, 0, 255)},
-    {"rect": pygame.Rect(screen_width // 2 - 65, screen_height - 60, 50, 50), "color": (255, 255, 0)},
-    {"rect": pygame.Rect(screen_width // 2 - 5, screen_height - 60, 50, 50), "color": (255, 165, 0)},
-    {"rect": pygame.Rect(screen_width // 2 + 55, screen_height - 60, 50, 50), "color": (0, 255, 0)},
-    {"rect": pygame.Rect(screen_width // 2 + 115, screen_height - 60, 50, 50), "color": (128, 0, 128)}
-]
+# Load road image and scale it down
+road_image = pygame.image.load(ROAD_IMAGE_PATH)
+road_image = pygame.transform.scale(road_image, (ROAD_SIZE, ROAD_SIZE))
 
-ui_selected_button = None
-preview_image = None
+# Define road object class
+class RoadObject:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.rotation = 0
 
-dragging_rect = None
-dragging_offset = (0, 0)
+    def draw(self):
+        rotated_road = pygame.transform.rotate(road_image, self.rotation)
+        screen.blit(rotated_road, (self.x, self.y))
 
-def snap_to_grid(position):
-    snapped_x = round((position[0] - GRID_SIZE / 2) / GRID_SIZE) * GRID_SIZE
-    snapped_y = round((position[1] - GRID_SIZE / 2) / GRID_SIZE) * GRID_SIZE
-    return (snapped_x, snapped_y)
+    def snap_to_grid(self):
+        self.x = round(self.x / GRID_SIZE) * GRID_SIZE
+        self.y = round(self.y / GRID_SIZE) * GRID_SIZE
 
-def get_darker_color(color):
-    r = max(color[0] - 50, 0)
-    g = max(color[1] - 50, 0)
-    b = max(color[2] - 50, 0)
-    return (r, g, b)
+    def rotate(self):
+        self.rotation = (self.rotation + 90) % 360
 
-font = pygame.font.SysFont(None, 24)
-instructions = [
-    "Left-click on a color button to select it.",
-    "Left-click on the grid to place a rectangle.",
-    "Right-click on a rectangle to delete it.",
-    "Scroll the mouse wheel to switch colors.",
-]
-text_y = screen_height - 30
-for instruction in instructions:
-    text = font.render(instruction, True, (0, 0, 0))
-    text_rect = text.get_rect(center=(screen_width // 2, text_y))
-    screen.blit(text, text_rect)
-    text_y += 30
+# Create road objects list
+road_objects = []
 
-line_road_image = pygame.image.load('images/LineRoad.png')  # Replace 'LineRoad.png' with the path to your line road sprite image
-line_road_image = pygame.transform.scale(line_road_image, (GRID_SIZE, GRID_SIZE))  # Scale the image to match the grid size
+# Initialize variables
+ui_visible = True
+creating_road = False
 
+# Game loop
 running = True
 while running:
+    # Handle events
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 1:
-                for i, button in enumerate(ui_buttons):
-                    if button["rect"].collidepoint(event.pos):
-                        ui_selected_button = i
-                        break
+            if event.button == 1:  # Left mouse button
+                if ui_visible:
+                    if not creating_road:
+                        # Start creating road object
+                        creating_road = True
+                        road_preview = RoadObject(*event.pos)
+                    else:
+                        # Place road object on the grid
+                        road_preview.snap_to_grid()
+                        road_objects.append(road_preview)
+                        creating_road = False
                 else:
-                    if ui_selected_button is not None:
-                        mouse_pos = snap_to_grid(event.pos)
-                        rect = pygame.Rect(mouse_pos[0], mouse_pos[1], GRID_SIZE, GRID_SIZE)
-                        if ui_selected_button == 0:  # Road button
-                            rect_color = ui_buttons[ui_selected_button]["color"]
-                            rectangles.append((rect, rect_color))
-                        # ui_selected_button = None  # Deselect the button after placing the road (commented out)
-            elif event.button == 3:
-                for rect, _ in rectangles:
-                    if rect.collidepoint(event.pos):
-                        rectangles.remove((rect, _))
-                        break
-            elif event.button == 4:
-                if ui_selected_button is not None:
-                    ui_selected_button -= 1
-                    if ui_selected_button < 0:
-                        ui_selected_button = len(ui_buttons) - 1
-            elif event.button == 5:
-                if ui_selected_button is not None:
-                    ui_selected_button += 1
-                    if ui_selected_button >= len(ui_buttons):
-                        ui_selected_button = 0
+                    # Place road object on the grid directly
+                    road_objects.append(RoadObject(*event.pos))
+            elif event.button == 3:  # Right mouse button
+                if not creating_road and not ui_visible:
+                    # Delete road object
+                    for obj in road_objects:
+                        if obj.x == event.pos[0] and obj.y == event.pos[1]:
+                            road_objects.remove(obj)
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_t:
+                # Toggle UI visibility
+                ui_visible = not ui_visible
+            elif event.key == pygame.K_r:
+                # Rotate road preview
+                if creating_road and ui_visible:
+                    road_preview.rotate()
 
-    screen.fill((255, 255, 255))
+    # Update road preview position
+    if creating_road:
+        road_preview.x, road_preview.y = pygame.mouse.get_pos()
 
-    for x in range(0, screen_width, GRID_SIZE):
-        pygame.draw.line(screen, (200, 200, 200), (x, 0), (x, screen_height))
-    for y in range(0, screen_height, GRID_SIZE):
-        pygame.draw.line(screen, (200, 200, 200), (0, y), (screen_width, y))
+    # Draw the background
+    screen.fill(BACKGROUND_COLOR)
 
-    for rect, color in rectangles:
-        if color == ui_buttons[0]["color"]:  # Check if the color is for the road
-            screen.blit(line_road_image, rect)
-        else:
-            pygame.draw.rect(screen, color, rect)
+    # Draw the grid
+    for x in range(0, SCREEN_WIDTH, GRID_SIZE):
+        pygame.draw.line(screen, GRID_COLOR, (x, 0), (x, SCREEN_HEIGHT))
+    for y in range(0, SCREEN_HEIGHT, GRID_SIZE):
+        pygame.draw.line(screen, GRID_COLOR, (0, y), (SCREEN_WIDTH, y))
 
-    for i, button in enumerate(ui_buttons):
-        pygame.draw.rect(screen, button["color"], button["rect"])
-        if ui_selected_button == i:
-            pygame.draw.rect(screen, (255, 255, 255), button["rect"], 3)
+    # Draw the road objects
+    for obj in road_objects:
+        obj.draw()
 
-    if ui_selected_button is not None:
-        mouse_pos = pygame.mouse.get_pos()
-        snapped_pos = snap_to_grid(mouse_pos)
-        if ui_selected_button == 0:  # Road button
-            if preview_image is None:
-                preview_image = line_road_image
-            preview_rect = pygame.Rect(snapped_pos[0], snapped_pos[1], GRID_SIZE, GRID_SIZE)
-            screen.blit(preview_image, preview_rect)
-        else:
-            preview_color = get_darker_color(ui_buttons[ui_selected_button]["color"])
-            preview_rect = pygame.Rect(snapped_pos[0], snapped_pos[1], GRID_SIZE, GRID_SIZE)
-            pygame.draw.rect(screen, preview_color, preview_rect)
+    # Draw the road preview
+    if creating_road:
+        road_preview.draw()
 
+    # Draw the UI element
+    if ui_visible:
+        pygame.draw.rect(screen, UI_COLOR, (0, 0, UI_WIDTH, UI_HEIGHT))
+        pygame.draw.rect(screen, UI_BORDER_COLOR, (0, 0, UI_WIDTH, UI_HEIGHT), 2)
+        font = pygame.font.Font(None, 24)
+        text = font.render(UI_TOGGLE_TEXT, True, (0, 0, 0))
+        screen.blit(text, (10, 10))
+
+    # Update the display
     pygame.display.flip()
-    clock.tick(60)
 
+# Quit the simulation
 pygame.quit()
