@@ -1,56 +1,86 @@
 import pygame
-import math
+import pygame_gui
 
-# Initialize Pygame
+# Initialize pygame
 pygame.init()
 
-# Define constants
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 600
+# Game window dimensions
+WINDOW_WIDTH = 800
+WINDOW_HEIGHT = 600
+
+# Grid dimensions
 GRID_SIZE = 50
-ROAD_SIZE = GRID_SIZE
-BACKGROUND_COLOR = (255, 255, 255)
-GRID_COLOR = (200, 200, 200)
-ROAD_COLOR = (0, 0, 0)
-ROAD_IMAGE_PATH = "images/LineRoad.png"
-UI_COLOR = (150, 150, 150)
-UI_BORDER_COLOR = (100, 100, 100)
-UI_WIDTH = 200
-UI_HEIGHT = 50
-UI_TOGGLE_TEXT = "Toggle UI (T)"
+GRID_WIDTH = WINDOW_WIDTH // GRID_SIZE
+GRID_HEIGHT = WINDOW_HEIGHT // GRID_SIZE
 
-# Create the Pygame window
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Road Simulation")
+# Colors
+BLACK = (0, 0, 0)
+ORANGE = (255, 165, 0)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+BLUE = (0, 0, 255)
 
-# Load road image and scale it down
-road_image = pygame.image.load(ROAD_IMAGE_PATH)
-road_image = pygame.transform.scale(road_image, (ROAD_SIZE, ROAD_SIZE))
+# Barrack properties
+BARRACK_SIZE = 1
 
-# Define road object class
-class RoadObject:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-        self.rotation = 0
+# Troop properties
+TROOP_SIZE = 0.5
+TROOP_SPEED = 1
 
-    def draw(self):
-        rotated_road = pygame.transform.rotate(road_image, self.rotation)
-        screen.blit(rotated_road, (self.x, self.y))
+# Initialize the game window
+window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+pygame.display.set_caption("Grid-based Game")
 
-    def snap_to_grid(self):
-        self.x = round(self.x / GRID_SIZE) * GRID_SIZE
-        self.y = round(self.y / GRID_SIZE) * GRID_SIZE
+# Game clock
+clock = pygame.time.Clock()
 
-    def rotate(self):
-        self.rotation = (self.rotation + 90) % 360
+# Game grid
+grid = [[None for _ in range(GRID_WIDTH)] for _ in range(GRID_HEIGHT)]
 
-# Create road objects list
-road_objects = []
+# Create the central orange box
+central_box_x = GRID_WIDTH // 2 - 1
+central_box_y = GRID_HEIGHT // 2 - 1
+for i in range(2):
+    for j in range(2):
+        grid[central_box_y + i][central_box_x + j] = ORANGE
 
-# Initialize variables
-ui_visible = True
-creating_road = False
+# Barracks list
+barracks = []
+
+# UI Manager
+ui_manager = pygame_gui.UIManager((WINDOW_WIDTH, WINDOW_HEIGHT))
+
+# UI Button positions
+UI_BUTTON_WIDTH = 100
+UI_BUTTON_HEIGHT = 30
+UI_BUTTON_PADDING = 10
+UI_BUTTON_POSITION_X = (WINDOW_WIDTH - UI_BUTTON_WIDTH * 3 - UI_BUTTON_PADDING * 2) // 2
+UI_BUTTON_POSITION_Y = WINDOW_HEIGHT - UI_BUTTON_HEIGHT - UI_BUTTON_PADDING
+
+# UI Button colors
+UI_BUTTON_COLORS = [RED, GREEN, BLUE]
+
+# UI Toggle buttons
+ui_toggle_buttons = []
+for i, color in enumerate(UI_BUTTON_COLORS):
+    button_rect = pygame.Rect(
+        UI_BUTTON_POSITION_X + (UI_BUTTON_WIDTH + UI_BUTTON_PADDING) * i,
+        UI_BUTTON_POSITION_Y,
+        UI_BUTTON_WIDTH,
+        UI_BUTTON_HEIGHT
+    )
+    button = pygame_gui.elements.UIButton(
+        relative_rect=button_rect,
+        text='',
+        manager=ui_manager
+    )
+    button.bg_color = color
+    button.selected = False
+    ui_toggle_buttons.append(button)
+
+# Selected barrack color
+selected_color = None
+selected_button = None
 
 # Game loop
 running = True
@@ -59,67 +89,121 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 1:  # Left mouse button
-                if ui_visible:
-                    if not creating_road:
-                        # Start creating road object
-                        creating_road = True
-                        road_preview = RoadObject(*event.pos)
+
+        if event.type == pygame.USEREVENT:
+            if event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                for i, button in enumerate(ui_toggle_buttons):
+                    if event.ui_element == button:
+                        if selected_button == button:
+                            selected_button = None
+                            selected_color = None
+                        else:
+                            selected_button = button
+                            selected_color = UI_BUTTON_COLORS[i]
+                        break
+
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1 and selected_color is not None:
+                # Get the mouse position
+                mouse_pos = pygame.mouse.get_pos()
+
+                # Calculate the grid position
+                grid_x = mouse_pos[0] // GRID_SIZE
+                grid_y = mouse_pos[1] // GRID_SIZE
+
+                # Check if the grid position is empty and within the valid range
+                if (
+                    0 <= grid_x < GRID_WIDTH
+                    and 0 <= grid_y < GRID_HEIGHT
+                    and grid[grid_y][grid_x] is None
+                ):
+                    # Create a new barrack
+                    barrack = {
+                        "x": grid_x,
+                        "y": grid_y,
+                        "color": selected_color,
+                    }
+
+                    # Add the barrack to the grid and barracks list
+                    barracks.append(barrack)
+                    grid[grid_y][grid_x] = barrack
+
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 4:  # Scroll up
+                if selected_button is not None:
+                    index = ui_toggle_buttons.index(selected_button)
+                    if index > 0:
+                        selected_button = ui_toggle_buttons[index - 1]
+                        selected_color = UI_BUTTON_COLORS[index - 1]
                     else:
-                        # Place road object on the grid
-                        road_preview.snap_to_grid()
-                        road_objects.append(road_preview)
-                        creating_road = False
-                else:
-                    # Place road object on the grid directly
-                    road_objects.append(RoadObject(*event.pos))
-            elif event.button == 3:  # Right mouse button
-                if not creating_road and not ui_visible:
-                    # Delete road object
-                    for obj in road_objects:
-                        if obj.x == event.pos[0] and obj.y == event.pos[1]:
-                            road_objects.remove(obj)
-        elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_t:
-                # Toggle UI visibility
-                ui_visible = not ui_visible
-            elif event.key == pygame.K_r:
-                # Rotate road preview
-                if creating_road and ui_visible:
-                    road_preview.rotate()
+                        selected_button = ui_toggle_buttons[-1]
+                        selected_color = UI_BUTTON_COLORS[-1]
+            elif event.button == 5:  # Scroll down
+                if selected_button is not None:
+                    index = ui_toggle_buttons.index(selected_button)
+                    if index < len(ui_toggle_buttons) - 1:
+                        selected_button = ui_toggle_buttons[index + 1]
+                        selected_color = UI_BUTTON_COLORS[index + 1]
+                    else:
+                        selected_button = ui_toggle_buttons[0]
+                        selected_color = UI_BUTTON_COLORS[0]
 
-    # Update road preview position
-    if creating_road:
-        road_preview.x, road_preview.y = pygame.mouse.get_pos()
+        ui_manager.process_events(event)
 
-    # Draw the background
-    screen.fill(BACKGROUND_COLOR)
+    # Update UI
+    ui_manager.update(clock.tick(60) / 1000.0)
+
+    # Clear the grid
+    grid = [[None for _ in range(GRID_WIDTH)] for _ in range(GRID_HEIGHT)]
+
+    # Update the grid with barracks
+    for barrack in barracks:
+        grid[barrack["y"]][barrack["x"]] = barrack
+
+    # Draw the game
+    window.fill(BLACK)
 
     # Draw the grid
-    for x in range(0, SCREEN_WIDTH, GRID_SIZE):
-        pygame.draw.line(screen, GRID_COLOR, (x, 0), (x, SCREEN_HEIGHT))
-    for y in range(0, SCREEN_HEIGHT, GRID_SIZE):
-        pygame.draw.line(screen, GRID_COLOR, (0, y), (SCREEN_WIDTH, y))
+    for x in range(0, WINDOW_WIDTH, GRID_SIZE):
+        pygame.draw.line(window, ORANGE, (x, 0), (x, WINDOW_HEIGHT))
+    for y in range(0, WINDOW_HEIGHT, GRID_SIZE):
+        pygame.draw.line(window, ORANGE, (0, y), (WINDOW_WIDTH, y))
 
-    # Draw the road objects
-    for obj in road_objects:
-        obj.draw()
+    # Draw the central box
+    pygame.draw.rect(
+        window,
+        ORANGE,
+        (
+            central_box_x * GRID_SIZE,
+            central_box_y * GRID_SIZE,
+            2 * GRID_SIZE,
+            2 * GRID_SIZE
+        )
+    )
 
-    # Draw the road preview
-    if creating_road:
-        road_preview.draw()
+    # Draw the barracks
+    for barrack in barracks:
+        pygame.draw.rect(
+            window,
+            barrack["color"],
+            (barrack["x"] * GRID_SIZE, barrack["y"] * GRID_SIZE, GRID_SIZE, GRID_SIZE),
+        )
 
-    # Draw the UI element
-    if ui_visible:
-        pygame.draw.rect(screen, UI_COLOR, (0, 0, UI_WIDTH, UI_HEIGHT))
-        pygame.draw.rect(screen, UI_BORDER_COLOR, (0, 0, UI_WIDTH, UI_HEIGHT), 2)
-        font = pygame.font.Font(None, 24)
-        text = font.render(UI_TOGGLE_TEXT, True, (0, 0, 0))
-        screen.blit(text, (10, 10))
+    # Draw the selected button outline
+    if selected_button is not None:
+        outline_rect = pygame.Rect(
+            selected_button.rect.x - 2,
+            selected_button.rect.y - 2,
+            selected_button.rect.width + 4,
+            selected_button.rect.height + 4,
+        )
+        pygame.draw.rect(window, (255, 255, 255), outline_rect, 2)
+
+    # Draw the UI buttons
+    ui_manager.draw_ui(window)
 
     # Update the display
     pygame.display.flip()
 
-# Quit the simulation
+# Quit the game
 pygame.quit()
